@@ -6,9 +6,14 @@ over) to work out the UX before writing any Swift.
 
 ## Status
 
-Scaffolding stage: the Xcode project builds, runs on Simulator, and successfully round-trips
-data with Supabase (see `ContentView.swift` — a temporary connectivity-check screen listing the
-live food catalog). The real UI, ported from the HTML prototype, hasn't been built yet.
+Core loop works end-to-end, verified live on Simulator: Home → pick a meal → pick a food → set
+quantity/unit/variant → log it → Home's calorie ring, macro bars, and meal list update from a
+real Supabase read. `FoodMathTests` pins the unit-conversion math to values already verified
+against both the prototype and this app.
+
+Not yet ported: meal templates, Manage Foods, cross-food search polish, water editing, weight
+tracking, multi-day swipe/history, icon picker, custom foods, Settings (targets/water goal).
+The "Usual" sort also isn't wired up yet — the food picker just sorts alphabetically for now.
 
 ## Stack
 
@@ -47,10 +52,12 @@ Config/
 Sources/Tally/
   App/                    — @main entry point
   Config/                 — reads Supabase URL/key out of Info.plist at runtime
-  Services/               — SupabaseClient setup (date decoding, current user id, etc.)
+  Services/               — SupabaseClient, TallyStore (data layer), FoodMath, DateKey
   Models/                 — Codable structs mirroring supabase/schema.sql exactly
-  Views/                  — SwiftUI screens (currently just the placeholder ContentView)
+  Views/                  — HomeView, FoodPickerView, QuantityView, etc. + Components/
   Resources/              — Assets.xcassets + generated Info.plist
+Tests/TallyTests/
+  FoodMathTests.swift     — pins the unit/variant conversion math to known-good values
 supabase/
   schema.sql              — tables, trigger, RLS policies
   seed.sql                — the full food catalog, generated from the prototype's data
