@@ -1,0 +1,61 @@
+import SwiftUI
+
+struct FoodPickerView: View {
+    let meal: Meal
+    @Binding var path: NavigationPath
+    @Environment(TallyStore.self) private var store
+    @State private var showAllFoods = false
+    @State private var searchText = ""
+
+    private var candidates: [Food] {
+        let base = showAllFoods
+            ? store.foods
+            : store.foods.filter { $0.mealTags.contains(meal.rawValue) || $0.mealTags.contains("mains") }
+        guard !searchText.isEmpty else { return base.sorted { $0.name < $1.name } }
+        return base.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+            .sorted { $0.name < $1.name }
+    }
+
+    var body: some View {
+        List {
+            Section {
+                Toggle("Show all foods", isOn: $showAllFoods)
+            }
+            Section {
+                ForEach(candidates) { food in
+                    Button { select(food) } label: {
+                        HStack {
+                            Text(food.emoji).font(.title3)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(food.name).foregroundStyle(.primary)
+                                Text(previewLabel(for: food)).font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if food.pickRequired {
+                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .searchable(text: $searchText, prompt: "Search foods")
+        .navigationTitle("Add to \(meal.displayName)")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func previewLabel(for food: Food) -> String {
+        let variant = store.defaultVariant(for: food)
+        let def = FoodMath.resolve(food: food, variant: variant)
+        let m = def.macros(for: def.defaultQty)
+        return "\(Int(m.calories)) cal per \(def.unitLabel(for: def.defaultQty))"
+    }
+
+    private func select(_ food: Food) {
+        if store.variants(for: food.id).isEmpty {
+            path.append(Route.quantity(food: food, variant: nil, meal: meal))
+        } else {
+            path.append(Route.variantPicker(food: food, meal: meal))
+        }
+    }
+}

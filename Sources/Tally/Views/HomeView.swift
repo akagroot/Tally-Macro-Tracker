@@ -1,0 +1,191 @@
+import SwiftUI
+
+enum Route: Hashable {
+    case foodPicker(meal: Meal)
+    case variantPicker(food: Food, meal: Meal)
+    case quantity(food: Food, variant: FoodVariant?, meal: Meal)
+}
+
+struct HomeView: View {
+    @Environment(TallyStore.self) private var store
+    @State private var path = NavigationPath()
+    @State private var showMealPicker = false
+    @State private var showWaterAdd = false
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            ScrollView {
+                VStack(spacing: 18) {
+                    calorieCard
+                    waterCard
+                    mealsSection
+                }
+                .padding(.top, 8)
+                .padding(.bottom, 90)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("🥗 Tally · \(DateKey.friendly(store.currentDateKey))")
+            .navigationBarTitleDisplayMode(.inline)
+            .overlay(alignment: .bottomTrailing) { fab }
+            .navigationDestination(for: Route.self) { route in
+                switch route {
+                case .foodPicker(let meal):
+                    FoodPickerView(meal: meal, path: $path)
+                case .variantPicker(let food, let meal):
+                    VariantPickerView(food: food, meal: meal, path: $path)
+                case .quantity(let food, let variant, let meal):
+                    QuantityView(food: food, variant: variant, meal: meal, path: $path)
+                }
+            }
+            .sheet(isPresented: $showMealPicker) {
+                MealPickerSheet { meal in
+                    showMealPicker = false
+                    path.append(Route.foodPicker(meal: meal))
+                }
+            }
+            .sheet(isPresented: $showWaterAdd) {
+                WaterAddSheet()
+            }
+            .task { await store.bootstrap() }
+            .refreshable { await store.loadDay(store.currentDateKey) }
+        }
+    }
+
+    // MARK: - Calorie / macro card
+
+    private var calorieCard: some View {
+        let totals = store.dayTotals()
+        let target = store.settings.calorieTarget
+        let left = max(0, target - totals.calories)
+        return VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .stroke(Color.secondary.opacity(0.15), lineWidth: 12)
+                Circle()
+                    .trim(from: 0, to: min(1, totals.calories / max(target, 1)))
+                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                VStack {
+                    Text("\(Int(left))").font(.system(size: 34, weight: .bold, design: .rounded))
+                    Text("CAL LEFT").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 150, height: 150)
+
+            Text("\(Int(totals.calories)) eaten · \(Int(target)) target")
+                .font(.footnote).foregroundStyle(.secondary)
+
+            VStack(spacing: 8) {
+                macroRow("Protein", totals.proteinG, store.settings.proteinTargetG, .orange)
+                macroRow("Carbs", totals.carbsG, store.settings.carbsTargetG, .yellow)
+                macroRow("Fat", totals.fatG, store.settings.fatTargetG, .purple)
+            }
+        }
+        .padding(18)
+        .background(RoundedRectangle(cornerRadius: 22).fill(Color(.secondarySystemGroupedBackground)))
+        .padding(.horizontal)
+    }
+
+    private func macroRow(_ label: String, _ eaten: Double, _ target: Double, _ color: Color) -> some View {
+        let over = eaten > target
+        return HStack {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(label).font(.caption).frame(width: 56, alignment: .leading)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.secondary.opacity(0.15))
+                    Capsule().fill(over ? Color.red : color)
+                        .frame(width: geo.size.width * min(1, eaten / max(target, 1)))
+                }
+            }
+            .frame(height: 6)
+            Text(over ? "+\(Int(eaten - target))g over" : "\(Int(max(0, target - eaten)))g left")
+                .font(.caption2).foregroundStyle(.secondary).frame(width: 80, alignment: .trailing)
+        }
+    }
+
+    // MARK: - Water card
+
+    private var waterCard: some View {
+        HStack(spacing: 12) {
+            Text("💧").font(.title2)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("\(Int(store.waterOz)) / \(Int(store.settings.waterTargetOz)) oz")
+                    .font(.system(.footnote, design: .monospaced)).fontWeight(.bold)
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.secondary.opacity(0.15))
+                        Capsule().fill(Color(red: 0.36, green: 0.61, blue: 0.84))
+                            .frame(width: geo.size.width * min(1, store.waterOz / max(store.settings.waterTargetOz, 1)))
+                    }
+                }
+                .frame(height: 6)
+            }
+            Button("+ Add") { showWaterAdd = true }
+                .buttonStyle(.borderedProminent)
+                .tint(Color(red: 0.36, green: 0.61, blue: 0.84))
+                .controlSize(.small)
+        }
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 20).fill(Color(.secondarySystemGroupedBackground)))
+        .padding(.horizontal)
+    }
+
+    // MARK: - Meals
+
+    private var mealsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("EATEN TODAY").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 20)
+            ForEach(Meal.allCases) { meal in
+                mealCard(meal)
+            }
+        }
+    }
+
+    private func mealCard(_ meal: Meal) -> some View {
+        let entries = store.entries(for: meal)
+        let totals = store.totals(for: meal)
+        return VStack(spacing: 0) {
+            HStack {
+                Text(meal.displayName).font(.headline)
+                Spacer()
+                Text("\(Int(totals.calories)) cal").font(.subheadline).foregroundStyle(.secondary)
+                Button { path.append(Route.foodPicker(meal: meal)) } label: {
+                    Image(systemName: "plus.circle.fill").font(.title3)
+                }
+            }
+            .padding(14)
+
+            ForEach(entries) { entry in
+                if let food = store.foods.first(where: { $0.id == entry.foodId }) {
+                    HStack {
+                        Text(food.emoji)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entry.variantId.flatMap { vid in store.variants(for: food.id).first { $0.id == vid }?.name } ?? food.name)
+                            Text(entry.unitLabel).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Text("\(Int(entry.calories))").foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    Divider().padding(.leading, 14)
+                }
+            }
+        }
+        .background(RoundedRectangle(cornerRadius: 20).fill(Color(.secondarySystemGroupedBackground)))
+        .padding(.horizontal)
+    }
+
+    private var fab: some View {
+        Button { showMealPicker = true } label: {
+            Image(systemName: "plus")
+                .font(.title2.bold())
+                .foregroundStyle(.white)
+                .frame(width: 58, height: 58)
+                .background(Circle().fill(Color.accentColor))
+                .shadow(radius: 4, y: 2)
+        }
+        .padding(24)
+    }
+}

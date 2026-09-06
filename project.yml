@@ -48,11 +48,28 @@ targets:
         SUPABASE_URL: $(SUPABASE_URL)
         SUPABASE_ANON_KEY: $(SUPABASE_ANON_KEY)
 
+  TallyTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Tests/TallyTests
+    dependencies:
+      - target: Tally
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.jordanberroteran.TallyTests
+
 schemes:
   Tally:
     build:
       targets:
         Tally: all
+        TallyTests: [test]
+    test:
+      targets:
+        - TallyTests
     run:
       config: Debug
     archive:

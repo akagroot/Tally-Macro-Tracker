@@ -2,9 +2,12 @@ import SwiftUI
 
 @main
 struct TallyApp: App {
+    @State private var store = TallyStore()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            HomeView()
+                .environment(store)
         }
     }
 }
