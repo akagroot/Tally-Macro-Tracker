@@ -1,0 +1,13 @@
+# Secrets
+.env
+.env.local
+
+# macOS
+.DS_Store
+
+# Xcode / Swift (added ahead of scaffolding the app)
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
