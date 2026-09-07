@@ -13,10 +13,12 @@ against both the prototype and this app. Settings → Daily Targets and Water Go
 up and verified end-to-end (edit → save → Home picks up the change from Supabase). Home also
 supports swiping between days (with the same slide/fade transition as the prototype) and
 tapping the header to jump back to today — each day's data is fetched fresh from Supabase.
+Water editing (tap the running total to correct/reset it, separate from the +Add flow) and
+weight tracking (Settings → Weight, one value per day) are both wired up and verified.
 
-Not yet ported: meal templates, Manage Foods, cross-food search polish, water editing (the
-running total itself, not the goal), weight tracking, icon picker, custom foods. The "Usual"
-sort also isn't wired up yet — the food picker just sorts alphabetically for now.
+Not yet ported: meal templates, Manage Foods, cross-food search polish, icon picker, custom
+foods. The "Usual" sort also isn't wired up yet — the food picker just sorts alphabetically
+for now.
 
 ## Stack
 
