@@ -9,11 +9,13 @@ over) to work out the UX before writing any Swift.
 Core loop works end-to-end, verified live on Simulator: Home → pick a meal → pick a food → set
 quantity/unit/variant → log it → Home's calorie ring, macro bars, and meal list update from a
 real Supabase read. `FoodMathTests` pins the unit-conversion math to values already verified
-against both the prototype and this app.
+against both the prototype and this app. Settings → Daily Targets and Water Goal are also wired
+up and verified end-to-end (edit → save → Home picks up the change from Supabase).
 
-Not yet ported: meal templates, Manage Foods, cross-food search polish, water editing, weight
-tracking, multi-day swipe/history, icon picker, custom foods, Settings (targets/water goal).
-The "Usual" sort also isn't wired up yet — the food picker just sorts alphabetically for now.
+Not yet ported: meal templates, Manage Foods, cross-food search polish, water editing (the
+running total itself, not the goal), weight tracking, multi-day swipe/history, icon picker,
+custom foods. The "Usual" sort also isn't wired up yet — the food picker just sorts
+alphabetically for now.
 
 ## Stack
 
