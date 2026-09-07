@@ -116,6 +116,52 @@ final class TallyStore {
         return t
     }
 
+    // MARK: - Custom foods
+
+    /// `foods` is a shared catalog table (no user_id column — see schema.sql), so a custom food
+    /// is just a regular row with is_custom=true. It's always "serving"-based, no oz/g toggle
+    /// (see FoodMath.unitOptions) — matches the prototype's customFoodDef, which never routed
+    /// custom foods through the oz/g unit-family system at all.
+    func createCustomFood(name: String, emoji: String, proteinG: Double, carbsG: Double, fatG: Double, mealTags: [String]) async throws -> Food {
+        struct NewCustomFood: Encodable {
+            let id: String
+            let name: String
+            let emoji: String
+            let isCustom: Bool
+            let unit: String
+            let pluralize: Bool
+            let step: Double
+            let btnStep: Double
+            let minQty: Double
+            let maxQty: Double
+            let defaultQty: Double
+            let proteinG: Double
+            let carbsG: Double
+            let fatG: Double
+            let macroTag: String
+            let mealTags: [String]
+        }
+        let id = "custom-" + UUID().uuidString.lowercased()
+        let payload = NewCustomFood(
+            id: id, name: name, emoji: emoji, isCustom: true,
+            unit: "serving", pluralize: true, step: 0.5, btnStep: 0.5, minQty: 0.5, maxQty: 4, defaultQty: 1,
+            proteinG: proteinG, carbsG: carbsG, fatG: fatG, macroTag: "other", mealTags: mealTags
+        )
+        try await client.from("foods").insert(payload).execute()
+
+        let newFood = Food(
+            id: id, name: name, emoji: emoji, isCustom: true,
+            unit: "serving", pluralize: true, step: 0.5, btnStep: 0.5, minQty: 0.5, maxQty: 4, defaultQty: 1,
+            gramsPerUnit: nil, nativeIsOz: false, pickRequired: false,
+            itemMode: false, itemsPerServing: nil, itemName: nil,
+            proteinG: proteinG, carbsG: carbsG, fatG: fatG,
+            macroTag: "other", mealTags: mealTags, defaultVariantId: nil, lastUsedAt: nil, createdAt: nil
+        )
+        foods.append(newFood)
+        foods.sort { $0.name < $1.name }
+        return newFood
+    }
+
     // MARK: - Mutation
 
     func addLogEntry(food: Food, variant: FoodVariant?, def: ResolvedFoodDef, qty: Double, meal: Meal) async throws {

@@ -8,14 +8,14 @@ import XCTest
 final class FoodMathTests: XCTestCase {
 
     private func makeFood(
-        id: String, name: String = "", emoji: String = "🍽️", unit: String? = nil,
+        id: String, name: String = "", emoji: String = "🍽️", isCustom: Bool = false, unit: String? = nil,
         pluralize: Bool = false, step: Double? = nil, minQty: Double? = nil, maxQty: Double? = nil,
         defaultQty: Double? = nil, gramsPerUnit: Double? = nil, nativeIsOz: Bool = false,
         pickRequired: Bool = false, itemMode: Bool = false, itemsPerServing: Double? = nil,
         itemName: String? = nil, p: Double, c: Double, f: Double
     ) -> Food {
         Food(
-            id: id, name: name, emoji: emoji, isCustom: false, unit: unit, pluralize: pluralize,
+            id: id, name: name, emoji: emoji, isCustom: isCustom, unit: unit, pluralize: pluralize,
             step: step, btnStep: step, minQty: minQty, maxQty: maxQty, defaultQty: defaultQty,
             gramsPerUnit: gramsPerUnit, nativeIsOz: nativeIsOz, pickRequired: pickRequired,
             itemMode: itemMode, itemsPerServing: itemsPerServing, itemName: itemName,
@@ -89,6 +89,19 @@ final class FoodMathTests: XCTestCase {
         let m = def.macros(for: 3)
         let expectedCalories: Double = 167 // 1*4 + 25*4 + 7*9
         XCTAssertEqual(m.calories, expectedCalories, accuracy: 0.01, "3 cookies should equal exactly one labeled serving")
+    }
+
+    // MARK: - Custom foods never offer an oz/g toggle (no real gramsPerUnit backs a
+    // user-defined "serving", so a gram conversion would be meaningless).
+
+    func testCustomFoodHasNoOzGramToggle() {
+        let custom = makeFood(id: "custom-1", isCustom: true, unit: "serving", pluralize: true, step: 0.5, minQty: 0.5, maxQty: 4, defaultQty: 1, p: 20, c: 10, f: 5)
+        let def = FoodMath.resolve(food: custom, variant: nil)
+        XCTAssertEqual(def.unitOptions, ["native"], "custom foods must never show an oz/g pill")
+        XCTAssertEqual(def.unitKey, "native")
+        let m = def.macros(for: 1)
+        let expectedCalories: Double = 165 // 20*4 + 10*4 + 5*9
+        XCTAssertEqual(m.calories, expectedCalories, accuracy: 0.001)
     }
 
     // MARK: - switchUnit keeps the physical serving constant across a unit change.

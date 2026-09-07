@@ -48,7 +48,12 @@ enum FoodMath {
     /// A variant whose own unit override happens to equal "oz" collapses the same way
     /// nativeIsOz foods do — no point showing both a "native" pill and an "oz" pill when
     /// they're identical.
+    ///
+    /// Custom foods never get an oz/g toggle at all: their macros are entered per user-defined
+    /// "serving" with no real gramsPerUnit backing it, so a gram conversion would be meaningless
+    /// (matches the prototype's customFoodDef, which never routed through unitOptionsFor).
     static func unitOptions(food: Food, variant: FoodVariant?) -> [String] {
+        guard !food.isCustom else { return ["native"] }
         let nativeUnit = variant?.unit ?? food.unit
         return (food.nativeIsOz || nativeUnit == "oz") ? ["oz", "g"] : ["native", "oz", "g"]
     }
