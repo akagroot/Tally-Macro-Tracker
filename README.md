@@ -14,11 +14,12 @@ up and verified end-to-end (edit → save → Home picks up the change from Supa
 supports swiping between days (with the same slide/fade transition as the prototype) and
 tapping the header to jump back to today — each day's data is fetched fresh from Supabase.
 Water editing (tap the running total to correct/reset it, separate from the +Add flow) and
-weight tracking (Settings → Weight, one value per day) are both wired up and verified.
+weight tracking (Settings → Weight, one value per day) are both wired up and verified. The
+food picker's Usual/A-Z sort toggle works (Usual = by last_used_at, maintained by the DB
+trigger), and custom foods can be created inline from the food picker ("Create Custom Food"),
+tagged for whichever meal you were adding to, with no oz/g toggle since they're serving-based.
 
-Not yet ported: meal templates, Manage Foods, cross-food search polish, icon picker, custom
-foods. The "Usual" sort also isn't wired up yet — the food picker just sorts alphabetically
-for now.
+Not yet ported: meal templates, Manage Foods, cross-food search polish, icon picker.
 
 ## Stack
 
