@@ -13,13 +13,18 @@ struct FoodPickerView: View {
         var id: String { rawValue }
     }
 
+    private var isSearching: Bool { !searchText.isEmpty }
+
     private var candidates: [Food] {
-        let base = showAllFoods
+        // Typing a search term searches the WHOLE catalog regardless of the meal filter or the
+        // "Show all foods" toggle — you're looking for a specific food by name at that point,
+        // not browsing what's typical for this meal.
+        let base = (isSearching || showAllFoods)
             ? store.foods
             : store.foods.filter { $0.mealTags.contains(meal.rawValue) || $0.mealTags.contains("mains") }
-        let filtered = searchText.isEmpty
-            ? base
-            : base.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        let filtered = isSearching
+            ? base.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+            : base
         switch sortMode {
         case .alphabetical:
             return filtered.sorted { $0.name < $1.name }
@@ -42,6 +47,8 @@ struct FoodPickerView: View {
         List {
             Section {
                 Toggle("Show all foods", isOn: $showAllFoods)
+                    .disabled(isSearching)
+                    .foregroundStyle(isSearching ? .secondary : .primary)
                 Picker("Sort", selection: $sortMode) {
                     ForEach(SortMode.allCases) { mode in
                         Text(mode.rawValue).tag(mode)

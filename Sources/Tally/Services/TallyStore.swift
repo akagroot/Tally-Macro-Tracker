@@ -162,6 +162,34 @@ final class TallyStore {
         return newFood
     }
 
+    // MARK: - Manage foods
+
+    /// Renaming/re-emoji-ing/re-macro-ing a food this way changes it for every past log_entries
+    /// row that references it too (they only store the food_id, not a frozen name) — deliberate:
+    /// unlike macros-per-entry (which ARE snapshotted, see NewLogEntry), a food's display name
+    /// and icon are catalog-level facts, not something a specific day's log should freeze.
+    func updateFood(_ food: Food, name: String, emoji: String, proteinG: Double, carbsG: Double, fatG: Double) async throws {
+        struct Patch: Encodable {
+            let name: String
+            let emoji: String
+            let proteinG: Double
+            let carbsG: Double
+            let fatG: Double
+        }
+        try await client.from("foods")
+            .update(Patch(name: name, emoji: emoji, proteinG: proteinG, carbsG: carbsG, fatG: fatG))
+            .eq("id", value: food.id)
+            .execute()
+        if let idx = foods.firstIndex(where: { $0.id == food.id }) {
+            foods[idx].name = name
+            foods[idx].emoji = emoji
+            foods[idx].proteinG = proteinG
+            foods[idx].carbsG = carbsG
+            foods[idx].fatG = fatG
+            foods.sort { $0.name < $1.name }
+        }
+    }
+
     // MARK: - Mutation
 
     func addLogEntry(food: Food, variant: FoodVariant?, def: ResolvedFoodDef, qty: Double, meal: Meal) async throws {

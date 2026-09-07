@@ -10,6 +10,8 @@ enum Route: Hashable {
     case waterEdit(initialOz: Double)
     case weight(initialLbs: Double)
     case customFood(meal: Meal)
+    case manageFoods
+    case customizeFood(food: Food)
 }
 
 struct HomeView: View {
@@ -87,6 +89,10 @@ struct HomeView: View {
                     WeightView(initialLbs: initialLbs, path: $path)
                 case .customFood(let meal):
                     CustomFoodView(meal: meal, path: $path)
+                case .manageFoods:
+                    ManageFoodsView(path: $path)
+                case .customizeFood(let food):
+                    CustomizeFoodView(food: food, path: $path)
                 }
             }
             .sheet(isPresented: $showMealPicker) {

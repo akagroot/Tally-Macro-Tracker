@@ -21,6 +21,11 @@ struct SettingsView: View {
             } label: {
                 row(icon: "figure.stand", title: "Weight", value: store.weightLbs.map { "\(Int($0)) lbs" } ?? "Not set")
             }
+            Button {
+                path.append(Route.manageFoods)
+            } label: {
+                row(icon: "fork.knife", title: "Manage Foods", value: "\(store.foods.count)")
+            }
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
