@@ -15,6 +15,13 @@ struct HomeView: View {
     @State private var showMealPicker = false
     @State private var showWaterAdd = false
 
+    // Day-transition animation state — mirrors the prototype's animateDayChange: exit
+    // animates off, the jump to the opposite starting offset happens instantly (no
+    // withAnimation wrapper), then the enter animates back to center/full opacity.
+    @State private var dayContentOffset: CGFloat = 0
+    @State private var dayContentOpacity: Double = 1
+    @State private var isChangingDay = false
+
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
@@ -25,11 +32,31 @@ struct HomeView: View {
                 }
                 .padding(.top, 8)
                 .padding(.bottom, 90)
+                .offset(x: dayContentOffset)
+                .opacity(dayContentOpacity)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("🥗 Tally · \(DateKey.friendly(store.currentDateKey))")
+            // Pan-y equivalent: a plain vertical scroll is untouched, only a
+            // horizontally-dominant drag past the threshold changes the day.
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 24)
+                    .onEnded { value in
+                        let horizontal = value.translation.width
+                        let vertical = value.translation.height
+                        guard abs(horizontal) > 60, abs(horizontal) > abs(vertical) else { return }
+                        Task { await changeDay(by: horizontal < 0 ? 1 : -1) }
+                    }
+            )
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Button { Task { await jumpToToday() } } label: {
+                        Text("🥗 Tally · \(DateKey.friendly(store.currentDateKey))")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                    }
+                    .disabled(store.currentDateKey == DateKey.today)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { path.append(Route.settings) } label: {
                         Image(systemName: "gearshape")
@@ -65,6 +92,44 @@ struct HomeView: View {
             .task { await store.bootstrap() }
             .refreshable { await store.loadDay(store.currentDateKey) }
         }
+    }
+
+    // MARK: - Day navigation
+
+    /// direction: 1 = moving forward a day (content exits left, enters from right),
+    /// -1 = backward (reversed) — same convention as the prototype's animateDayChange.
+    private func changeDay(by direction: Int) async {
+        guard !isChangingDay else { return }
+        let newKey = DateKey.shift(store.currentDateKey, byDays: direction)
+        await animateDayChange(direction: direction, to: newKey)
+    }
+
+    private func jumpToToday() async {
+        guard store.currentDateKey != DateKey.today, !isChangingDay else { return }
+        let direction = store.currentDateKey < DateKey.today ? 1 : -1
+        await animateDayChange(direction: direction, to: DateKey.today)
+    }
+
+    private func animateDayChange(direction: Int, to newKey: String) async {
+        isChangingDay = true
+        withAnimation(.easeInOut(duration: 0.18)) {
+            dayContentOffset = direction > 0 ? -26 : 26
+            dayContentOpacity = 0
+        }
+        try? await Task.sleep(nanoseconds: 180_000_000)
+
+        await store.loadDay(newKey)
+
+        // Instant jump to the opposite starting edge — no animation wrapper here,
+        // matching the prototype's "set transition:none, force reflow, re-enable" trick.
+        dayContentOffset = direction > 0 ? 26 : -26
+        dayContentOpacity = 0
+
+        withAnimation(.easeInOut(duration: 0.18)) {
+            dayContentOffset = 0
+            dayContentOpacity = 1
+        }
+        isChangingDay = false
     }
 
     // MARK: - Calorie / macro card
