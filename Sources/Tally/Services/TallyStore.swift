@@ -153,6 +153,36 @@ final class TallyStore {
             .execute()
         waterOz = oz
     }
+
+    func updateTargets(proteinG: Double, carbsG: Double, fatG: Double, calories: Double) async throws {
+        struct Patch: Encodable {
+            let proteinTargetG: Double, carbsTargetG: Double, fatTargetG: Double, calorieTarget: Double
+            enum CodingKeys: String, CodingKey {
+                case proteinTargetG = "protein_target_g", carbsTargetG = "carbs_target_g"
+                case fatTargetG = "fat_target_g", calorieTarget = "calorie_target"
+            }
+        }
+        try await client.from("user_settings")
+            .update(Patch(proteinTargetG: proteinG, carbsTargetG: carbsG, fatTargetG: fatG, calorieTarget: calories))
+            .eq("user_id", value: userID)
+            .execute()
+        settings.proteinTargetG = proteinG
+        settings.carbsTargetG = carbsG
+        settings.fatTargetG = fatG
+        settings.calorieTarget = calories
+    }
+
+    func updateWaterGoal(_ oz: Double) async throws {
+        struct Patch: Encodable {
+            let waterTargetOz: Double
+            enum CodingKeys: String, CodingKey { case waterTargetOz = "water_target_oz" }
+        }
+        try await client.from("user_settings")
+            .update(Patch(waterTargetOz: oz))
+            .eq("user_id", value: userID)
+            .execute()
+        settings.waterTargetOz = oz
+    }
 }
 
 private extension Double {

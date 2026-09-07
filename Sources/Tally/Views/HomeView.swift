@@ -4,6 +4,9 @@ enum Route: Hashable {
     case foodPicker(meal: Meal)
     case variantPicker(food: Food, meal: Meal)
     case quantity(food: Food, variant: FoodVariant?, meal: Meal)
+    case settings
+    case targets(initial: UserSettings)
+    case waterGoal(initialOz: Double)
 }
 
 struct HomeView: View {
@@ -26,6 +29,13 @@ struct HomeView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle("🥗 Tally · \(DateKey.friendly(store.currentDateKey))")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { path.append(Route.settings) } label: {
+                        Image(systemName: "gearshape")
+                    }
+                }
+            }
             .overlay(alignment: .bottomTrailing) { fab }
             .navigationDestination(for: Route.self) { route in
                 switch route {
@@ -35,6 +45,12 @@ struct HomeView: View {
                     VariantPickerView(food: food, meal: meal, path: $path)
                 case .quantity(let food, let variant, let meal):
                     QuantityView(food: food, variant: variant, meal: meal, path: $path)
+                case .settings:
+                    SettingsView(path: $path)
+                case .targets(let initial):
+                    TargetsView(initialSettings: initial, path: $path)
+                case .waterGoal(let initialOz):
+                    WaterGoalView(initialOz: initialOz, path: $path)
                 }
             }
             .sheet(isPresented: $showMealPicker) {
