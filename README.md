@@ -10,12 +10,13 @@ Core loop works end-to-end, verified live on Simulator: Home → pick a meal →
 quantity/unit/variant → log it → Home's calorie ring, macro bars, and meal list update from a
 real Supabase read. `FoodMathTests` pins the unit-conversion math to values already verified
 against both the prototype and this app. Settings → Daily Targets and Water Goal are also wired
-up and verified end-to-end (edit → save → Home picks up the change from Supabase).
+up and verified end-to-end (edit → save → Home picks up the change from Supabase). Home also
+supports swiping between days (with the same slide/fade transition as the prototype) and
+tapping the header to jump back to today — each day's data is fetched fresh from Supabase.
 
 Not yet ported: meal templates, Manage Foods, cross-food search polish, water editing (the
-running total itself, not the goal), weight tracking, multi-day swipe/history, icon picker,
-custom foods. The "Usual" sort also isn't wired up yet — the food picker just sorts
-alphabetically for now.
+running total itself, not the goal), weight tracking, icon picker, custom foods. The "Usual"
+sort also isn't wired up yet — the food picker just sorts alphabetically for now.
 
 ## Stack
 
