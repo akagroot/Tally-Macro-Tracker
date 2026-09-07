@@ -7,6 +7,8 @@ struct FoodPickerView: View {
     @State private var showAllFoods = false
     @State private var searchText = ""
     @State private var sortMode: SortMode = .usual
+    @State private var applyingTemplateID: UUID?
+    @State private var errorMessage: String?
 
     enum SortMode: String, CaseIterable, Identifiable {
         case usual = "Usual", alphabetical = "A–Z"
@@ -45,6 +47,32 @@ struct FoodPickerView: View {
 
     var body: some View {
         List {
+            if !isSearching && !store.templates.isEmpty {
+                Section("Templates") {
+                    ForEach(store.templates) { template in
+                        Button { apply(template) } label: {
+                            HStack {
+                                Image(systemName: "square.and.arrow.down.fill")
+                                    .foregroundStyle(Color.accentColor)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(template.name).foregroundStyle(.primary)
+                                    Text(templatePreview(template)).font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if applyingTemplateID == template.id {
+                                    ProgressView()
+                                }
+                            }
+                        }
+                        .disabled(applyingTemplateID != nil)
+                        .swipeActions {
+                            Button("Delete", role: .destructive) {
+                                Task { try? await store.deleteTemplate(template.id) }
+                            }
+                        }
+                    }
+                }
+            }
             Section {
                 Toggle("Show all foods", isOn: $showAllFoods)
                     .disabled(isSearching)
@@ -80,10 +108,34 @@ struct FoodPickerView: View {
                     Label("Create Custom Food", systemImage: "plus.circle")
                 }
             }
+            if let errorMessage {
+                Section {
+                    Text(errorMessage).font(.caption).foregroundStyle(.red)
+                }
+            }
         }
         .searchable(text: $searchText, prompt: "Search foods")
         .navigationTitle("Add to \(meal.displayName)")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func templatePreview(_ template: MealTemplate) -> String {
+        let names = template.items.compactMap { item in store.foods.first { $0.id == item.foodId }?.name }
+        return names.isEmpty ? "\(template.items.count) items" : names.joined(separator: ", ")
+    }
+
+    private func apply(_ template: MealTemplate) {
+        applyingTemplateID = template.id
+        errorMessage = nil
+        Task {
+            do {
+                try await store.applyTemplate(template, to: meal)
+                path = NavigationPath()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            applyingTemplateID = nil
+        }
     }
 
     private func previewLabel(for food: Food) -> String {

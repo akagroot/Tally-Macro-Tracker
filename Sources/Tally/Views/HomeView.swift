@@ -19,6 +19,8 @@ struct HomeView: View {
     @State private var path = NavigationPath()
     @State private var showMealPicker = false
     @State private var showWaterAdd = false
+    @State private var templateSaveMeal: Meal?
+    @State private var templateNameDraft = ""
 
     // Day-transition animation state — mirrors the prototype's animateDayChange: exit
     // animates off, the jump to the opposite starting offset happens instantly (no
@@ -103,6 +105,24 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showWaterAdd) {
                 WaterAddSheet()
+            }
+            .alert("Save as Template", isPresented: Binding(
+                get: { templateSaveMeal != nil },
+                set: { if !$0 { templateSaveMeal = nil } }
+            )) {
+                TextField("Template name", text: $templateNameDraft)
+                Button("Cancel", role: .cancel) { templateNameDraft = "" }
+                Button("Save") {
+                    guard let meal = templateSaveMeal else { return }
+                    let name = templateNameDraft.trimmingCharacters(in: .whitespaces)
+                    templateNameDraft = ""
+                    guard !name.isEmpty else { return }
+                    Task { try? await store.createTemplate(name: name, from: meal) }
+                }
+            } message: {
+                if let meal = templateSaveMeal {
+                    Text("Saves \(meal.displayName)'s current items so you can log them all again in one tap.")
+                }
             }
             .task { await store.bootstrap() }
             .refreshable { await store.loadDay(store.currentDateKey) }
@@ -261,6 +281,12 @@ struct HomeView: View {
                 Text(meal.displayName).font(.headline)
                 Spacer()
                 Text("\(Int(totals.calories)) cal").font(.subheadline).foregroundStyle(.secondary)
+                if !entries.isEmpty {
+                    Button { templateSaveMeal = meal } label: {
+                        Image(systemName: "square.and.arrow.down").font(.title3)
+                    }
+                    .foregroundStyle(.secondary)
+                }
                 Button { path.append(Route.foodPicker(meal: meal)) } label: {
                     Image(systemName: "plus.circle.fill").font(.title3)
                 }

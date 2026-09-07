@@ -33,6 +33,7 @@ final class TallyStore {
     private(set) var logEntries: [LogEntry] = []
     private(set) var waterOz: Double = 0
     private(set) var weightLbs: Double?
+    private(set) var templates: [MealTemplate] = []
 
     private(set) var isBootstrapping = false
     var loadError: String?
@@ -50,10 +51,13 @@ final class TallyStore {
             async let foodsTask: [Food] = client.from("foods").select().order("name").execute().value
             async let variantsTask: [FoodVariant] = client.from("food_variants").select().order("sort_order").execute().value
             async let settingsTask: [UserSettings] = client.from("user_settings").select().eq("user_id", value: userID).execute().value
+            async let templatesTask: [MealTemplate] = client.from("meal_templates")
+                .select().eq("user_id", value: userID).order("name").execute().value
 
             foods = try await foodsTask
             variantsByFood = Dictionary(grouping: try await variantsTask, by: \.foodId)
             if let s = try await settingsTask.first { settings = s }
+            templates = try await templatesTask
 
             await loadDay(currentDateKey)
             loadError = nil
@@ -190,15 +194,62 @@ final class TallyStore {
         }
     }
 
+    // MARK: - Meal templates
+
+    /// Templates store food *references* (food_id/variant_id/qty/unit_key), never frozen
+    /// macros — applying one always resolves against CURRENT food data, same deliberate choice
+    /// as the prototype (see schema.sql). Not meal-specific: a template is just a bag of items,
+    /// applicable to whichever meal you're adding to when you tap it.
+    func createTemplate(name: String, from meal: Meal) async throws {
+        let items = entries(for: meal).map {
+            TemplateItem(foodId: $0.foodId, variantId: $0.variantId, qty: $0.qty, unitKey: $0.unitKey)
+        }
+        guard !items.isEmpty else { return }
+        struct NewTemplate: Encodable {
+            let userId: UUID
+            let name: String
+            let items: [TemplateItem]
+            enum CodingKeys: String, CodingKey { case userId = "user_id", name, items }
+        }
+        let inserted: [MealTemplate] = try await client.from("meal_templates")
+            .insert(NewTemplate(userId: userID, name: name, items: items))
+            .select()
+            .execute().value
+        if let t = inserted.first {
+            templates.append(t)
+            templates.sort { $0.name < $1.name }
+        }
+    }
+
+    func deleteTemplate(_ id: UUID) async throws {
+        try await client.from("meal_templates").delete().eq("id", value: id).execute()
+        templates.removeAll { $0.id == id }
+    }
+
+    /// Logs every item in the template to `meal` in one go — a food no longer in the catalog
+    /// (deleted since the template was saved) is silently skipped rather than failing the whole
+    /// batch.
+    func applyTemplate(_ template: MealTemplate, to meal: Meal) async throws {
+        var sortOrder = entries(for: meal).count
+        for item in template.items {
+            guard let food = foods.first(where: { $0.id == item.foodId }) else { continue }
+            let variant = item.variantId.flatMap { vid in variants(for: food.id).first { $0.id == vid } }
+            let def = FoodMath.resolve(food: food, variant: variant, unitKey: item.unitKey)
+            try await insertLogEntry(food: food, variant: variant, def: def, qty: item.qty, meal: meal, sortOrder: sortOrder)
+            sortOrder += 1
+        }
+        await loadDay(currentDateKey)
+    }
+
     // MARK: - Mutation
 
-    func addLogEntry(food: Food, variant: FoodVariant?, def: ResolvedFoodDef, qty: Double, meal: Meal) async throws {
+    private func insertLogEntry(food: Food, variant: FoodVariant?, def: ResolvedFoodDef, qty: Double, meal: Meal, sortOrder: Int) async throws {
         let m = def.macros(for: qty)
         let entry = NewLogEntry(
             logDate: currentDateKey, meal: meal, foodId: food.id, variantId: variant?.id,
             qty: qty, unitKey: def.unitKey, unitLabel: "\(qty.formattedTrim) \(def.unitLabel(for: qty))",
             proteinG: m.protein, carbsG: m.carbs, fatG: m.fat,
-            sortOrder: entries(for: meal).count
+            sortOrder: sortOrder
         )
         struct Insert: Encodable { let userId: UUID; let row: NewLogEntry
             enum CodingKeys: String, CodingKey { case userId = "user_id" }
@@ -209,6 +260,10 @@ final class TallyStore {
             }
         }
         try await client.from("log_entries").insert(Insert(userId: userID, row: entry)).execute()
+    }
+
+    func addLogEntry(food: Food, variant: FoodVariant?, def: ResolvedFoodDef, qty: Double, meal: Meal) async throws {
+        try await insertLogEntry(food: food, variant: variant, def: def, qty: qty, meal: meal, sortOrder: entries(for: meal).count)
         await loadDay(currentDateKey)
     }
 
