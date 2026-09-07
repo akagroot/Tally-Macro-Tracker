@@ -32,6 +32,7 @@ final class TallyStore {
     private(set) var currentDateKey = DateKey.today
     private(set) var logEntries: [LogEntry] = []
     private(set) var waterOz: Double = 0
+    private(set) var weightLbs: Double?
 
     private(set) var isBootstrapping = false
     var loadError: String?
@@ -75,9 +76,15 @@ final class TallyStore {
                 .eq("user_id", value: userID)
                 .eq("log_date", value: dateKey)
                 .execute().value
+            async let weightTask: [WeightLog] = client.from("weight_log")
+                .select()
+                .eq("user_id", value: userID)
+                .eq("log_date", value: dateKey)
+                .execute().value
 
             logEntries = try await entriesTask
             waterOz = try await waterTask.first?.oz ?? 0
+            weightLbs = try await weightTask.first?.lbs
             loadError = nil
         } catch {
             loadError = error.localizedDescription
@@ -152,6 +159,19 @@ final class TallyStore {
             .upsert(Row(userId: userID, logDate: currentDateKey, oz: oz), onConflict: "user_id,log_date")
             .execute()
         waterOz = oz
+    }
+
+    func setWeight(_ lbs: Double) async throws {
+        struct Row: Encodable {
+            let userId: UUID
+            let logDate: String
+            let lbs: Double
+            enum CodingKeys: String, CodingKey { case userId = "user_id", logDate = "log_date", lbs }
+        }
+        try await client.from("weight_log")
+            .upsert(Row(userId: userID, logDate: currentDateKey, lbs: lbs), onConflict: "user_id,log_date")
+            .execute()
+        weightLbs = lbs
     }
 
     func updateTargets(proteinG: Double, carbsG: Double, fatG: Double, calories: Double) async throws {

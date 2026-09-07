@@ -7,6 +7,8 @@ enum Route: Hashable {
     case settings
     case targets(initial: UserSettings)
     case waterGoal(initialOz: Double)
+    case waterEdit(initialOz: Double)
+    case weight(initialLbs: Double)
 }
 
 struct HomeView: View {
@@ -78,6 +80,10 @@ struct HomeView: View {
                     TargetsView(initialSettings: initial, path: $path)
                 case .waterGoal(let initialOz):
                     WaterGoalView(initialOz: initialOz, path: $path)
+                case .waterEdit(let initialOz):
+                    WaterEditView(initialOz: initialOz, path: $path)
+                case .weight(let initialLbs):
+                    WeightView(initialLbs: initialLbs, path: $path)
                 }
             }
             .sheet(isPresented: $showMealPicker) {
@@ -189,6 +195,26 @@ struct HomeView: View {
 
     private var waterCard: some View {
         HStack(spacing: 12) {
+            Button {
+                path.append(Route.waterEdit(initialOz: store.waterOz))
+            } label: {
+                waterTapContent
+            }
+            .buttonStyle(.plain)
+            Button("+ Add") { showWaterAdd = true }
+                .buttonStyle(.borderedProminent)
+                .tint(Color(red: 0.36, green: 0.61, blue: 0.84))
+                .controlSize(.small)
+        }
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 20).fill(Color(.secondarySystemGroupedBackground)))
+        .padding(.horizontal)
+    }
+
+    // Tapping this (not the Add button) opens Edit Water — correct or reset today's total,
+    // same "tap the amount to edit it" pattern as the prototype.
+    private var waterTapContent: some View {
+        HStack(spacing: 12) {
             Text("💧").font(.title2)
             VStack(alignment: .leading, spacing: 6) {
                 Text("\(Int(store.waterOz)) / \(Int(store.settings.waterTargetOz)) oz")
@@ -202,14 +228,9 @@ struct HomeView: View {
                 }
                 .frame(height: 6)
             }
-            Button("+ Add") { showWaterAdd = true }
-                .buttonStyle(.borderedProminent)
-                .tint(Color(red: 0.36, green: 0.61, blue: 0.84))
-                .controlSize(.small)
         }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 20).fill(Color(.secondarySystemGroupedBackground)))
-        .padding(.horizontal)
+        .contentShape(Rectangle())
+        .foregroundStyle(.primary)
     }
 
     // MARK: - Meals

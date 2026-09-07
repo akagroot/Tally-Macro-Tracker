@@ -16,6 +16,11 @@ struct SettingsView: View {
             } label: {
                 row(icon: "drop.fill", title: "Water Goal", value: "\(Int(store.settings.waterTargetOz)) oz")
             }
+            Button {
+                path.append(Route.weight(initialLbs: store.weightLbs ?? 150))
+            } label: {
+                row(icon: "figure.stand", title: "Weight", value: store.weightLbs.map { "\(Int($0)) lbs" } ?? "Not set")
+            }
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
