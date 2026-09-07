@@ -18,8 +18,11 @@ weight tracking (Settings → Weight, one value per day) are both wired up and v
 food picker's Usual/A-Z sort toggle works (Usual = by last_used_at, maintained by the DB
 trigger), and custom foods can be created inline from the food picker ("Create Custom Food"),
 tagged for whichever meal you were adding to, with no oz/g toggle since they're serving-based.
+Searching in the food picker now spans the whole catalog regardless of the meal filter, and
+Settings → Manage Foods lists every food (searchable) with a Customize screen to rename it,
+change its icon (a 70-emoji picker grid), or adjust its base macros.
 
-Not yet ported: meal templates, Manage Foods, cross-food search polish, icon picker.
+Not yet ported: meal templates.
 
 ## Stack
 
