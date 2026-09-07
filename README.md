@@ -20,9 +20,15 @@ trigger), and custom foods can be created inline from the food picker ("Create C
 tagged for whichever meal you were adding to, with no oz/g toggle since they're serving-based.
 Searching in the food picker now spans the whole catalog regardless of the meal filter, and
 Settings → Manage Foods lists every food (searchable) with a Customize screen to rename it,
-change its icon (a 70-emoji picker grid), or adjust its base macros.
+change its icon (a 70-emoji picker grid), or adjust its base macros. Meal templates round out
+the list — save any meal's current items by name from Home, then re-log the whole thing in one
+tap from the food picker's Templates section; templates store references, not frozen macros, so
+they always reflect current food data.
 
-Not yet ported: meal templates.
+**Every feature from the original prototype's scope is now ported and verified.** What's left is
+bigger-picture, not individual features: real-device testing beyond Simulator, HealthKit,
+real auth (still single hardcoded user — see the RLS note below), and eventually the paid
+Apple Developer account for TestFlight/App Store distribution.
 
 ## Stack
 
